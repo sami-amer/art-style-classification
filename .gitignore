@@ -1,2 +1,3 @@
-rasta/*
-texture-vs-shape/*
+rasta/
+texture-vs-shape/
+docker_hints.txt
