@@ -1,3 +1,7 @@
 rasta/
 texture-vs-shape/
 docker_hints.txt
+*.csv
+*.pickle
+image_folder/
+tmp*
