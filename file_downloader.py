@@ -21,11 +21,11 @@ department = df["Department"].value_counts()
 # classification = df["Classification"].value_counts()
 # object_names = df["Object Name"].value_counts()
 
-edo = df.loc[df['Period'] == "Drawings and Prints"]
+edo = df.loc[df["Period"] == "Drawings and Prints"]
 # edo = df.loc[df['Period'] == "Edo period (1615–1868)"]
 # print(edo['Object Name'].value_counts()[:20])
 print(periods[:20])
-edo_prints = edo.loc[edo['Object Name'] == "Print"]
+edo_prints = edo.loc[edo["Object Name"] == "Print"]
 # edo_prints_by_ident = edo_prints["Is Public Domain"].value_counts()
 # print(edo_prints["Culture"].value_counts())
 # print(edo_prints_by_ident)
@@ -45,7 +45,7 @@ print(edo_prints["Object ID"])
 #         print(index,item)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # url = "https://collectionapi.metmuseum.org/public/collection/v1/objects/36461"
     # r = requests.get(url)
     # # # print(r)
@@ -54,7 +54,6 @@ if __name__ == '__main__':
     # image_url = dic["primaryImage"]
     # # # print(dic[0])
     # wget.download(image_url,out='image_folder/test_name.jpg')
-
 
     # import time
     # list_to_loop = [0]*100
