@@ -53,7 +53,7 @@ image_datasets = {x: datasets.ImageFolder(data_dir+x,
                                           data_transforms[x])
                   for x in ['train', 'val','test']}
 
-dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=16,
+dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=32,
                                              shuffle=True, num_workers=4)
               for x in ['train', 'val','test']}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val','test']}

@@ -13,7 +13,7 @@ print(tf.test.is_gpu_available())
 rasta_model = tf.keras.models.load_model('models/default/model.h5')
 rasta_model.compile(optimizer='rmsprop', loss='categorical_crossentropy',metrics=['categorical_accuracy',tf.keras.metrics.TopKCategoricalAccuracy(k=5)])
 
-batch_size = 16
+batch_size = 32
 img_height = 224
 img_width = 224
 
