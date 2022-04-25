@@ -25,19 +25,19 @@ test_dir = f"data/wikipaintings_{d_size}/wikipaintings_test"
 
 # normalization_layer = tf.keras.layers.Rescaling(1./255)
 
-train_ds = tf.keras.utils.image_dataset_from_directory(
+train_ds = tf.keras.preprocessing.image_dataset_from_directory(
   train_dir,
   image_size=(img_height, img_width),
   batch_size=batch_size,
   label_mode='categorical')
 
-val_ds = tf.keras.utils.image_dataset_from_directory(
+val_ds = tf.keras.preprocessing.image_dataset_from_directory(
   val_dir,
   image_size=(img_height, img_width),
   batch_size=batch_size,
   label_mode='categorical')
 
-test_ds = tf.keras.utils.image_dataset_from_directory(
+test_ds = tf.keras.preprocessing.image_dataset_from_directory(
   test_dir,
   image_size=(img_height, img_width),
   batch_size=batch_size,
