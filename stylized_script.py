@@ -46,7 +46,7 @@ data_transforms = {
     ])
 }
 
-d_size = "small" # or full
+d_size = "full"
 
 data_dir = f'../rasta/data/wikipaintings_{d_size}/wikipaintings_'
 image_datasets = {x: datasets.ImageFolder(data_dir+x,
@@ -140,6 +140,6 @@ pytorch_total_params = sum(p.numel() for p in model_ft.parameters() if p.require
 print(f"Trainable Params: {pytorch_total_params}")
 
 model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                       num_epochs=25)
+                       num_epochs=50)
 
 torch.save(model_ft,"style_model")

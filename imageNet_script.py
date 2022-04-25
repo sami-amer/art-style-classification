@@ -17,7 +17,7 @@ import torchvision.models as models
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-convnext_base = models.convnext_base(pretrained=True)
+convnext_base = models.wide_resnet50_2(pretrained=True)
 
 for param in convnext_base.parameters():
     param.requires_grad = False
@@ -43,7 +43,7 @@ data_transforms = {
     ])
 }
 
-d_size = "small" # or full
+d_size = "full"
 
 data_dir = f'../rasta/data/wikipaintings_{d_size}/wikipaintings_'
 image_datasets = {x: datasets.ImageFolder(data_dir+x,
@@ -137,6 +137,6 @@ pytorch_total_params = sum(p.numel() for p in convnext_base.parameters() if p.re
 print(f"Trainable Params: {pytorch_total_params}")
 
 model_ft = train_model(convnext_base, criterion, optimizer_convnext, exp_lr_scheduler_convnext,
-                       num_epochs=25)
+                       num_epochs=50)
 
-torch.save(model_ft,"style_model")
+torch.save(model_ft,"imageNet_model")
