@@ -12,22 +12,25 @@ import pickle
 
 with open(r"MetObjects.pickle", "rb") as input_file:
     df = pickle.load(input_file)
-print(df.columns)
+# print(df.columns)
 
-# periods = df["Period"].value_counts()
+periods = df["Period"].value_counts()
 # cultures = df["Culture"].value_counts()
 # dynasty = df["Dynasty"].value_counts()
 department = df["Department"].value_counts()
 # classification = df["Classification"].value_counts()
 # object_names = df["Object Name"].value_counts()
 
-edo = df.loc[df['Department'] == "Drawings and Prints"]
-
+edo = df.loc[df['Period'] == "Drawings and Prints"]
+# edo = df.loc[df['Period'] == "Edo period (1615–1868)"]
+# print(edo['Object Name'].value_counts()[:20])
+print(periods[:20])
 edo_prints = edo.loc[edo['Object Name'] == "Print"]
-edo_prints_by_ident = edo_prints["Locale"].value_counts()
-
-print(edo_prints_by_ident)
-# print(edo_prints["Object ID"])
+# edo_prints_by_ident = edo_prints["Is Public Domain"].value_counts()
+# print(edo_prints["Culture"].value_counts())
+# print(edo_prints_by_ident)
+print(edo_prints["Object ID"])
+# print(periods)
 
 # object_names_edo = edo["Object Name"].value_counts()
 # print(object_names_edo)

@@ -5,3 +5,4 @@ docker_hints.txt
 *.pickle
 image_folder/
 tmp*
+opendata/
