@@ -7,6 +7,9 @@ from tensorflow import keras
 os.chdir("rasta/")
 tf.keras.backend.clear_session()
 
+print(tf.version.VERSION)
+print(tf.test.is_gpu_available())
+
 rasta_model = tf.keras.models.load_model('models/default/model.h5')
 rasta_model.compile(optimizer='rmsprop', loss='categorical_crossentropy',metrics=['categorical_accuracy',tf.keras.metrics.TopKCategoricalAccuracy(k=5)])
 
@@ -20,7 +23,7 @@ train_dir = f"data/wikipaintings_{d_size}/wikipaintings_train"
 val_dir = f"data/wikipaintings_{d_size}/wikipaintings_val"
 test_dir = f"data/wikipaintings_{d_size}/wikipaintings_test"
 
-normalization_layer = tf.keras.layers.Rescaling(1./255)
+# normalization_layer = tf.keras.layers.Rescaling(1./255)
 
 train_ds = tf.keras.utils.image_dataset_from_directory(
   train_dir,
