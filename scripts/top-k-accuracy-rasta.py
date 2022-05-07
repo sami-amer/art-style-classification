@@ -2,8 +2,6 @@ import numpy as np
 import os
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.python.ops.numpy_ops import np_config
-np_config.enable_numpy_behavior()
 
 # MUST BE IN RASTA FOLDER
 os.chdir("rasta/")
@@ -26,7 +24,7 @@ def k_accuracy(output, target, topk=(1,)):
     target_reshaped = tf.reshape(tf.repeat(target_reshaped,y_pred.shape[0]),(y_pred.shape[0],1))
     # _,target_reshaped = tf.transpose(tf.repeat(tf.split(tf.where(target),2,axis=1),y_pred.shape[0]))
 
-    correct = (y_pred == target_reshaped)  # [maxk, B] were for each example we know which topk prediction matched truth
+    correct = (y_pred == tf.cast(target_reshaped,tf.int32))  # [maxk, B] were for each example we know which topk prediction matched truth
     # print(correct)
     # -- get topk accuracy
     list_topk_accs = []  # idx is topk1, topk2, ... etc
@@ -35,7 +33,7 @@ def k_accuracy(output, target, topk=(1,)):
         ind_which_topk_matched_truth = correct[:k]  # [maxk, B] -> [k, B]
         # print(ind_which_topk_matched_truth)
         # flatten it to help compute if we got it correct for each example in batch
-        flattened_indicator_which_topk_matched_truth = tf.cast(ind_which_topk_matched_truth.reshape(-1),tf.float32)  # [k, B] -> [kB]
+        flattened_indicator_which_topk_matched_truth = tf.cast(tf.reshape(ind_which_topk_matched_truth,-1),tf.float32)  # [k, B] -> [kB]
         # get if we got it right for any of our top k prediction for each example in batch
         tot_correct_topk = tf.math.reduce_sum(tf.cast(flattened_indicator_which_topk_matched_truth,tf.float32),axis=0,keepdims=True)  # [kB] -> [1]
         # print(tot_correct_topk)
@@ -47,18 +45,21 @@ def k_accuracy(output, target, topk=(1,)):
 
 
 
-rasta_model = tf.keras.models.load_model("models/default/model.h5")
-rasta_model.compile(
-    optimizer="rmsprop",
-    loss="categorical_crossentropy",
-    metrics=["categorical_accuracy", tf.keras.metrics.TopKCategoricalAccuracy(k=5)],
-)
+#rasta_model = tf.keras.models.load_model("models/default/model.h5")
+#rasta_model.compile(
+#    optimizer="rmsprop",
+#    loss="categorical_crossentropy",
+#    metrics=["categorical_accuracy", tf.keras.metrics.TopKCategoricalAccuracy(k=5)],
+#)
+
+#rasta_model = tf.keras.models.load_model("models/default/model.h5")
+rasta_model = tf.keras.models.load_model("../output_models/rasta_trained_extended_v2")
 
 batch_size = 1
 img_height = 224
 img_width = 224
 
-d_size = "small"  # or full
+d_size = "extended"  # or full
 
 test_dir = f"data/wikipaintings_{d_size}/wikipaintings_test"
 
@@ -128,7 +129,10 @@ pred_tot = 0
 for classname, correct_count in correct_pred.items():
     total_correct += correct_count
     pred_tot += total_pred[classname]
-    accuracy = 100 * float(correct_count) / total_pred[classname]
+    try:
+        accuracy = 100 * float(correct_count) / total_pred[classname]
+    except:
+        print(classname)
     print(f'Accuracy for class: {classname:5s} is {accuracy:.1f} %')
 
 total_acc = 100 * total_correct/pred_tot
