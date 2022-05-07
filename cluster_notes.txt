@@ -1,3 +1,6 @@
 Use powerai image -> activate conda manually and then switch envs
 
+use the below command
+
+singularity run --nv --cleanenv --env LICENSE=yes --bind /nobackup/users/samiamer/rasta:/rasta --bind .:/base docker_images/powerai_1.7.0-all-ubuntu18.04-py37.sif bash
 

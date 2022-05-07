@@ -1,8 +1,18 @@
+# Git /bnegreve/rasta
 rasta/
+
+# Git rgeirhos/texture-vs-shape
 texture-vs-shape/
+
+# Hint Files
 docker_hints.txt
-*.csv
+
+# Cache Files
 *.pickle
-image_folder/
 tmp*
-opendata/
+
+# Assets
+image_folder/
+plots/
+results/
+models/

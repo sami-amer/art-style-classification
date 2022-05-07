@@ -71,6 +71,7 @@ val_ds = val_ds.map(
     )
 )
 
+
 # Test the model
 # rasta_model.evaluate(test_ds,verbose=1)
 
@@ -83,14 +84,20 @@ for layer in rasta_model.layers[1:-2]:
 x = rasta_model.layers[-2].output
 x = tf.keras.layers.Dense(len(class_names), name="dense_end", activation="softmax")(x)
 # # predictions = tf.keras.layers.Dense(25, activation = "softmax")(x)
-rasta_trainable = tf.keras.Model(inputs=rasta_model.input, outputs=x)
-rasta_trainable.compile(
-    optimizer="rmsprop",
-    loss="categorical_crossentropy",
-    metrics=["categorical_accuracy", tf.keras.metrics.TopKCategoricalAccuracy(k=5)],
-)
-rasta_trainable.fit(train_ds, validation_data=val_ds, batch_size=batch_size, epochs=25)
+# rasta_trainable = tf.keras.Model(inputs=rasta_model.input, outputs=x)
+# rasta_trainable.compile(
+#     optimizer="rmsprop",
+#     loss="categorical_crossentropy",
+#     metrics=["categorical_accuracy", tf.keras.metrics.TopKCategoricalAccuracy(k=5)],
+# )
+# # rasta_trainable.fit(train_ds, validation_data=val_ds, batch_size=batch_size, epochs=25)
 
-rasta_trainable.evaluate(test_ds)
+# rasta_model.evaluate(test_ds)
+for image,labels in test_ds.unbatch().as_numpy_iterator():
+    image = np.expand_dims(image,axis=0)
+    output = rasta_model(image)
+    print(output)
+    break
+# rasta_model()
 
-rasta_trainable.save("rasta_trained")
+# rasta_trainable.save("rasta_trained")
