@@ -1,5 +1,5 @@
 import torch, torchvision
-import os
+import sys
 from torchvision import transforms
 from torchvision import datasets
 import time
@@ -48,19 +48,17 @@ class FocalLoss(nn.Module):
         if self.size_average: return loss.mean()
         else: return loss.sum()
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+args = {"dataset":sys.argv[1],"weights":sys.argv[2],"output_name":sys.argv[3]}
 Image.MAX_IMAGE_PIXELS = None
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.backends.cudnn.benchmark=True
+
 convnext_base = models.resnext101_32x8d(pretrained=True)
-#convnext_base=torch.load('output_models/imageNet_model_resNext_deep_retrain')
-#weights = torch.load('output_models/imageNet_model_resNext_deep_retrain_AdamW_weights', map_location='cpu')
-#convnext_base.load_state_dict(weights)
-
-#convnext_base = torch.load("output_models/imageNet_model_resNext_deep_retrain")
-
-
-
-
+num_ftrs = convnext_base.fc.in_features
+convnext_base.fc = nn.Linear(num_ftrs, len(class_names))
+weights = torch.load('output_models/imageNet_model_resNext_deep_retrain_AdamW_weights', map_location='cpu')
+convnext_base.load_state_dict(weights)
 
 for param in convnext_base.parameters():
     param.requires_grad = False
@@ -211,8 +209,6 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     return model
 
 
-num_ftrs = convnext_base.fc.in_features
-convnext_base.fc = nn.Linear(num_ftrs, len(class_names))
 
 if torch.cuda.device_count() > 1:
     print("Let's use", torch.cuda.device_count(), "GPUs!")
