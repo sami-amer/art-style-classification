@@ -23,38 +23,44 @@ class FocalLoss(nn.Module):
         super(FocalLoss, self).__init__()
         self.gamma = gamma
         self.alpha = alpha
-        if isinstance(alpha,(float,int)): self.alpha = torch.Tensor([alpha,1-alpha])
-        if isinstance(alpha,list): self.alpha = torch.Tensor(alpha)
+        if isinstance(alpha, (float, int)):
+            self.alpha = torch.Tensor([alpha, 1 - alpha])
+        if isinstance(alpha, list):
+            self.alpha = torch.Tensor(alpha)
         self.size_average = size_average
 
     def forward(self, input, target):
-        if input.dim()>2:
-            input = input.view(input.size(0),input.size(1),-1)  # N,C,H,W => N,C,H*W
-            input = input.transpose(1,2)    # N,C,H*W => N,H*W,C
-            input = input.contiguous().view(-1,input.size(2))   # N,H*W,C => N*H*W,C
-        target = target.view(-1,1)
+        if input.dim() > 2:
+            input = input.view(input.size(0), input.size(1), -1)  # N,C,H,W => N,C,H*W
+            input = input.transpose(1, 2)  # N,C,H*W => N,H*W,C
+            input = input.contiguous().view(-1, input.size(2))  # N,H*W,C => N*H*W,C
+        target = target.view(-1, 1)
 
         logpt = F.log_softmax(input)
-        logpt = logpt.gather(1,target)
+        logpt = logpt.gather(1, target)
         logpt = logpt.view(-1)
         pt = Variable(logpt.data.exp())
 
         if self.alpha is not None:
-            if self.alpha.type()!=input.data.type():
+            if self.alpha.type() != input.data.type():
                 self.alpha = self.alpha.type_as(input.data)
-            at = self.alpha.gather(0,target.data.view(-1))
+            at = self.alpha.gather(0, target.data.view(-1))
             logpt = logpt * Variable(at)
 
-        loss = -1 * (1-pt)**self.gamma * logpt
-        if self.size_average: return loss.mean()
-        else: return loss.sum()
+        loss = -1 * (1 - pt) ** self.gamma * logpt
+        if self.size_average:
+            return loss.mean()
+        else:
+            return loss.sum()
 
 
-args = {"dataset":sys.argv[1],"weights":sys.argv[2],"output_name":sys.argv[3]}
-print(f"Arguments passed: dataset is {args['dataset']}, weights are {args['weights']}, output_name is : {args['output_name']}")
+args = {"dataset": sys.argv[1], "weights": sys.argv[2], "output_name": sys.argv[3]}
+print(
+    f"Arguments passed: dataset is {args['dataset']}, weights are {args['weights']}, output_name is : {args['output_name']}"
+)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-torch.backends.cudnn.benchmark=True
+torch.backends.cudnn.benchmark = True
 
 
 batch_size = 256
@@ -65,8 +71,8 @@ data_transforms = {
         [
             transforms.RandomResizedCrop(224),
             transforms.RandomHorizontalFlip(),
-            #transforms.ColorJitter(),
-            #transforms.RandomGrayscale(.7),
+            # transforms.ColorJitter(),
+            # transforms.RandomGrayscale(.7),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ]
@@ -100,29 +106,38 @@ image_datasets = {
 
 dataloaders = {
     x: torch.utils.data.DataLoader(
-        image_datasets[x], batch_size=batch_size, shuffle=True, num_workers=num_workers,pin_memory=True
+        image_datasets[x],
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+        pin_memory=True,
     )
     for x in ["train", "val", "test"]
 }
 dataset_sizes = {x: len(image_datasets[x]) for x in ["train", "val", "test"]}
 class_names = image_datasets["train"].classes
 
-print(f"Found Train set with {dataset_sizes['train']} images and {len(image_datasets['train'].classes)} classes")
-print(f"Found Validation set with {dataset_sizes['val']} images and {len(image_datasets['val'].classes)}")
+print(
+    f"Found Train set with {dataset_sizes['train']} images and {len(image_datasets['train'].classes)} classes"
+)
+print(
+    f"Found Validation set with {dataset_sizes['val']} images and {len(image_datasets['val'].classes)}"
+)
 print(f"Using classes {class_names}")
 
 model = models.resnext101_32x8d(pretrained=True)
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, len(class_names))
-weights = torch.load(args["weights"], map_location='cpu')
+weights = torch.load(args["weights"], map_location="cpu")
 model.load_state_dict(weights)
 
 for param in model.parameters():
     param.requires_grad = False
 
-for layer_num,param in enumerate(model.parameters()):
+for layer_num, param in enumerate(model.parameters()):
     if layer_num > 200:
         param.requires_grad = True
+
 
 def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     since = time.time()
@@ -150,8 +165,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
             # Iterate over data.
             loop = tqdm(dataloaders[phase])
-            #for inputs, labels in dataloaders[phase]:
-            for idx,(inputs,labels) in enumerate(loop):
+            # for inputs, labels in dataloaders[phase]:
+            for idx, (inputs, labels) in enumerate(loop):
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
@@ -173,7 +188,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
-            #if phase == "train":
+            # if phase == "train":
             #    scheduler.step()
 
             epoch_loss = running_loss / dataset_sizes[phase]
@@ -215,20 +230,22 @@ if torch.cuda.device_count() > 1:
 
 model.to(device)
 
-criterion = FocalLoss() # nn.CrossEntropyLoss()
+criterion = FocalLoss()  # nn.CrossEntropyLoss()
 
 # Observe that all parameters are being optimized
-optimizer_convnext = optim.AdamW(model.parameters(), lr=0.001*batch_size/256, )
-
-exp_lr_scheduler_convnext = lr_scheduler.ReduceLROnPlateau(
-    optimizer_convnext,patience = 4,verbose=True)
-
-pytorch_total_params = sum(
-    p.numel() for p in model.parameters() if p.requires_grad
+optimizer_convnext = optim.AdamW(
+    model.parameters(),
+    lr=0.001 * batch_size / 256,
 )
 
+exp_lr_scheduler_convnext = lr_scheduler.ReduceLROnPlateau(
+    optimizer_convnext, patience=4, verbose=True
+)
+
+pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
 print(f"Trainable Params: {pytorch_total_params}")
-print(summary(model,(batch_size,3,224,224)))
+print(summary(model, (batch_size, 3, 224, 224)))
 print(f"batch size is {batch_size}")
 
 model_ft = train_model(
@@ -239,5 +256,5 @@ model_ft = train_model(
     num_epochs=40,
 )
 
-torch.save(model_ft.module.state_dict(), args["output_name"]+"_weights")
-torch.save(model_ft.module,args["output_name"])
+torch.save(model_ft.module.state_dict(), args["output_name"] + "_weights")
+torch.save(model_ft.module, args["output_name"])

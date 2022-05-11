@@ -10,8 +10,8 @@ tf.keras.backend.clear_session()
 print(tf.version.VERSION)
 print(tf.test.is_gpu_available())
 
-#from tensorflow_large_model_support import LMS
-#lms_callback = LMS()
+# from tensorflow_large_model_support import LMS
+# lms_callback = LMS()
 
 rasta_model = tf.keras.models.load_model("models/default/model.h5")
 rasta_model.compile(
@@ -75,11 +75,15 @@ val_ds = val_ds.map(
     )
 )
 
-train_ds = train_ds.map(lambda image,label: (tf.image.random_flip_left_right(image),label))
-val_ds = val_ds.map(lambda image,label: (tf.image.random_flip_left_right(image),label))
+train_ds = train_ds.map(
+    lambda image, label: (tf.image.random_flip_left_right(image), label)
+)
+val_ds = val_ds.map(
+    lambda image, label: (tf.image.random_flip_left_right(image), label)
+)
 
 train_ds = train_ds.apply(tf.data.experimental.ignore_errors()).repeat()
-test_ds = test_ds.apply(tf.data.experimental.ignore_errors())#.repeat()
+test_ds = test_ds.apply(tf.data.experimental.ignore_errors())  # .repeat()
 val_ds = val_ds.apply(tf.data.experimental.ignore_errors()).repeat()
 
 autotune = tf.data.experimental.AUTOTUNE
@@ -103,13 +107,25 @@ rasta_trainable = tf.keras.Model(inputs=rasta_model.input, outputs=x)
 rasta_trainable.compile(
     optimizer="rmsprop",
     loss="categorical_crossentropy",
-    metrics=["categorical_accuracy", tf.keras.metrics.TopKCategoricalAccuracy(k=3),tf.keras.metrics.Recall(),tf.keras.metrics.Precision()],
+    metrics=[
+        "categorical_accuracy",
+        tf.keras.metrics.TopKCategoricalAccuracy(k=3),
+        tf.keras.metrics.Recall(),
+        tf.keras.metrics.Precision(),
+    ],
 )
 
-rasta_trainable.fit(train_ds, validation_data=val_ds, batch_size=batch_size, epochs=25,steps_per_epoch=8000//batch_size,validation_steps=2000//batch_size)
+rasta_trainable.fit(
+    train_ds,
+    validation_data=val_ds,
+    batch_size=batch_size,
+    epochs=25,
+    steps_per_epoch=8000 // batch_size,
+    validation_steps=2000 // batch_size,
+)
 
-#rasta_trainable = tf.keras.models.load_model("../output_models/rasta_trained_extended")
+# rasta_trainable = tf.keras.models.load_model("../output_models/rasta_trained_extended")
 
-#rasta_model.evaluate(test_ds)
+# rasta_model.evaluate(test_ds)
 
 rasta_trainable.save("rasta_trained_extended_v2")
