@@ -1,5 +1,5 @@
 import torch, torchvision
-import os
+import sys
 from torchvision import transforms
 from torchvision import datasets
 import time
@@ -10,43 +10,63 @@ import torch.optim as optim
 from torch.optim import lr_scheduler
 import torchvision.models as models
 from torchinfo import summary
-from PIL import ImageFile,Image
+from PIL import ImageFile
 from tqdm import tqdm
+import torch.nn.functional as F
+from torch.autograd import Variable
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
+class FocalLoss(nn.Module):
+    def __init__(self, gamma=0, alpha=None, size_average=True):
+        super(FocalLoss, self).__init__()
+        self.gamma = gamma
+        self.alpha = alpha
+        if isinstance(alpha,(float,int)): self.alpha = torch.Tensor([alpha,1-alpha])
+        if isinstance(alpha,list): self.alpha = torch.Tensor(alpha)
+        self.size_average = size_average
+
+    def forward(self, input, target):
+        if input.dim()>2:
+            input = input.view(input.size(0),input.size(1),-1)  # N,C,H,W => N,C,H*W
+            input = input.transpose(1,2)    # N,C,H*W => N,H*W,C
+            input = input.contiguous().view(-1,input.size(2))   # N,H*W,C => N*H*W,C
+        target = target.view(-1,1)
+
+        logpt = F.log_softmax(input)
+        logpt = logpt.gather(1,target)
+        logpt = logpt.view(-1)
+        pt = Variable(logpt.data.exp())
+
+        if self.alpha is not None:
+            if self.alpha.type()!=input.data.type():
+                self.alpha = self.alpha.type_as(input.data)
+            at = self.alpha.gather(0,target.data.view(-1))
+            logpt = logpt * Variable(at)
+
+        loss = -1 * (1-pt)**self.gamma * logpt
+        if self.size_average: return loss.mean()
+        else: return loss.sum()
+
+
+args = {"dataset":sys.argv[1],"weights":sys.argv[2],"output_name":sys.argv[3]}
+print(f"Arguments passed: dataset is {args['dataset']}, weights are {args['weights']}, output_name is : {args['output_name']}")
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-Image.MAX_IMAGE_PIXELS = None
 torch.backends.cudnn.benchmark=True
-#convnext_base = models.resnext101_32x8d(pretrained=True)
 
-convnext_base=torch.load('output_models/imageNet_model_resNext_deep_retrain')
-weights = torch.load('output_models/imageNet_model_resNext_deep_retrain_AdamW_weights', map_location='cpu')
-convnext_base.load_state_dict(weights)
-
-#convnext_base = torch.load("output_models/imageNet_model_resNext_deep_retrain")
-
-
-
-
-
-for param in convnext_base.parameters():
-    param.requires_grad = False
-
-for layer_num,param in enumerate(convnext_base.parameters()):
-    if layer_num > 200:
-        param.requires_grad = True
 
 batch_size = 256
 num_workers = 64
-
-
 
 data_transforms = {
     "train": transforms.Compose(
         [
             transforms.RandomResizedCrop(224),
             transforms.RandomHorizontalFlip(),
+            #transforms.ColorJitter(),
+            #transforms.RandomGrayscale(.7),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ]
@@ -69,10 +89,10 @@ data_transforms = {
     ),
 }
 
-d_size = "stylized"
+d_size = args["dataset"]
 
 print(f"Using dataset {d_size}")
-data_dir = f"../rasta/data/wikipaintings_{d_size}/wikipaintings_"
+data_dir = f"heirarchy_data/{d_size}/wikipaintings_"
 image_datasets = {
     x: datasets.ImageFolder(data_dir + x, data_transforms[x])
     for x in ["train", "val", "test"]
@@ -91,14 +111,27 @@ print(f"Found Train set with {dataset_sizes['train']} images and {len(image_data
 print(f"Found Validation set with {dataset_sizes['val']} images and {len(image_datasets['val'].classes)}")
 print(f"Using classes {class_names}")
 
+model = models.resnext101_32x8d(pretrained=True)
+num_ftrs = model.fc.in_features
+model.fc = nn.Linear(num_ftrs, len(class_names))
+weights = torch.load(args["weights"], map_location='cpu')
+model.load_state_dict(weights)
+
+for param in model.parameters():
+    param.requires_grad = False
+
+for layer_num,param in enumerate(model.parameters()):
+    if layer_num > 200:
+        param.requires_grad = True
+
 def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
-    
+
     last_loss = 100
-    patience = 6
+    patience = 10
     trigger = 0
 
     for epoch in range(num_epochs):
@@ -157,7 +190,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                     print("Out of patience, returning best model")
                     model.load_state_dict(best_model_wts)
                     return model
-        
+
             # deep copy the model
             if phase == "val" and epoch_acc > best_acc:
                 trigger = 0
@@ -176,35 +209,35 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     return model
 
 
-#num_ftrs = convnext_base.fc.in_features
-#convnext_base.fc = nn.Linear(num_ftrs, len(class_names))
-
 if torch.cuda.device_count() > 1:
     print("Let's use", torch.cuda.device_count(), "GPUs!")
-    convnext_base = nn.DataParallel(convnext_base)
-convnext_base.to(device)
-criterion = nn.CrossEntropyLoss()
+    model = nn.DataParallel(model)
+
+model.to(device)
+
+criterion = FocalLoss() # nn.CrossEntropyLoss()
 
 # Observe that all parameters are being optimized
-optimizer_convnext = optim.AdamW(convnext_base.parameters(), lr=0.001*batch_size/256, )
+optimizer_convnext = optim.AdamW(model.parameters(), lr=0.001*batch_size/256, )
 
-# Decay LR by a factor of 0.1 every 7 epochs
 exp_lr_scheduler_convnext = lr_scheduler.ReduceLROnPlateau(
-    optimizer_convnext)
+    optimizer_convnext,patience = 4,verbose=True)
 
 pytorch_total_params = sum(
-    p.numel() for p in convnext_base.parameters() if p.requires_grad
+    p.numel() for p in model.parameters() if p.requires_grad
 )
 
 print(f"Trainable Params: {pytorch_total_params}")
-print(summary(convnext_base,(batch_size,3,224,224)))
-print(batch_size)
+print(summary(model,(batch_size,3,224,224)))
+print(f"batch size is {batch_size}")
+
 model_ft = train_model(
-    convnext_base,
+    model,
     criterion,
     optimizer_convnext,
     exp_lr_scheduler_convnext,
-    num_epochs=100,
+    num_epochs=40,
 )
 
-torch.save(model_ft.module.state_dict(), "imageNet_model_resNext_deep_retrain_AdamW_style_weights")
+torch.save(model_ft.module.state_dict(), args["output_name"]+"_weights")
+torch.save(model_ft.module,args["output_name"])

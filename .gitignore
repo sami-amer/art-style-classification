@@ -10,6 +10,7 @@ docker_hints.txt
 # Cache Files
 *.pickle
 tmp*
+.DS_Store
 
 # Assets
 image_folder/

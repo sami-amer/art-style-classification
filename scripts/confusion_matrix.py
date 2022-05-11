@@ -9,6 +9,7 @@ from torchvision import transforms
 from torchvision import datasets
 import time
 import copy
+import sys
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
@@ -19,6 +20,8 @@ from tqdm import tqdm
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
+args = {"dataset":sys.argv[1],"weights":sys.argv[2],"output_name":sys.argv[3]}
+print(f"Arguments passed: dataset is {args['dataset']}, weights are {args['weights']}, output_name is : {args['output_name']}")
 
 data_transforms = {
     'test': transforms.Compose([
@@ -29,7 +32,7 @@ data_transforms = {
     ])
 }
 
-d_size = "extended"
+d_size = args['dataset']
 
 
 data_dir = f'heirarchy_data/{d_size}/wikipaintings_'
@@ -47,11 +50,12 @@ print(classes)
 model = models.resnext101_32x8d(pretrained=True)
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, len(classes))
-weights = torch.load('output_models/resnext_adamW_focal_platueuLR_heirarchy_weights', map_location='cpu')
+weights = torch.load(args['weights'], map_location='cpu')
 model.load_state_dict(weights)
 
 y_pred = []
 y_true = []
+
 model.eval()
 model.to(device)
 
@@ -65,16 +69,7 @@ with torch.no_grad():
         # collect the correct predictions for each class
         y_pred.extend(predictions.cpu().numpy())
         y_true.extend(labels.cpu().numpy())
-#print(y_pred[:20])
-#print(y_true[:20])
-#with open('y_pred.pickle','wb') as f:
-#    pickle.dump(y_pred,f)
-#with open('y_true.pickle','wb') as f:
-#    pickle.dump(y_true,f)
-#with open('y_pred.pickle','rb') as f:
-#    y_pred = pickle.load(f)
-#with open('y_true.pickle','rb') as f:
-#    y_true = pickle.load(f)
+
 cf_matrix = confusion_matrix(y_pred,y_true)
 print(cf_matrix)
 print(np.sum(cf_matrix,axis=0))
@@ -83,4 +78,4 @@ df_cm = pd.DataFrame((cf_matrix.T/np.sum(cf_matrix,axis=0)).T *100, index = [i f
 print(df_cm)
 plt.figure(figsize = (12,7))
 sn.heatmap(df_cm, annot=True)
-plt.savefig('output.png')
+plt.savefig(args['output_name'])

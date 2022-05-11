@@ -7,12 +7,15 @@ import os
 from torchvision import transforms
 from torchvision import datasets
 import time
-import os
+import sys
 import copy
 import torch.nn as nn
 import torch.optim as optim
 from torch.optim import lr_scheduler
+import torchvision.models as models
 import numpy as np
+import torchvision.models as models
+from torchinfo import summary
 
 def k_accuracy(output: torch.Tensor, target: torch.Tensor, topk=(1,)) -> List[torch.FloatTensor]:
     with torch.no_grad():
@@ -32,6 +35,7 @@ def k_accuracy(output: torch.Tensor, target: torch.Tensor, topk=(1,)) -> List[to
         # if the k'th top answer of the model matches the truth we get 1.
         # Note: this for any example in batch we can only ever get 1 match (so we never overestimate accuracy <1)
         target_reshaped = target.view(1, -1).expand_as(y_pred)  # [B] -> [B, 1] -> [maxk, B]
+        target_reshaped = target_reshaped.to(device)
         # compare every topk's model prediction with the ground truth & give credit if any matches the ground truth
         correct = (y_pred == target_reshaped)  # [maxk, B] were for each example we know which topk prediction matched truth
         # original: correct = pred.eq(target.view(1, -1).expand_as(pred))
@@ -51,7 +55,8 @@ def k_accuracy(output: torch.Tensor, target: torch.Tensor, topk=(1,)) -> List[to
         return list_topk_accs  # list of topk accuracies for entire batch [topk1, topk2, ... etc]
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+args = {"dataset":sys.argv[1],"weights":sys.argv[2]}
+print(f"Arguments passed: dataset is {args['dataset']}, weights are {args['weights']}")
 
 data_transforms = {
     'test': transforms.Compose([
@@ -62,22 +67,29 @@ data_transforms = {
     ])
 }
 
-d_size = "small"
+d_size = args['dataset']
 
 
-data_dir = f'rasta/data/wikipaintings_{d_size}/wikipaintings_'
+data_dir = f'heirarchy_data/{d_size}/wikipaintings_'
 image_datasets = {x: datasets.ImageFolder(data_dir+x,
                                           data_transforms[x])
                   for x in ['test']}
 
 dataloaders = {x: torch.utils.data.DataLoader(image_datasets[x], batch_size=32,
-                                             shuffle=True, num_workers=0)
+                                             shuffle=True, num_workers=12)
               for x in ['test']}
 dataset_sizes = {x: len(image_datasets[x]) for x in ['test']}
 classes = image_datasets['test'].classes
+print(classes)
 
-model = torch.load("output_models/imageNet_model_pre_data_25epoch",map_location=torch.device('cpu'))
+model = models.resnext101_32x8d(pretrained=True)
+num_ftrs = model.fc.in_features
+model.fc = nn.Linear(num_ftrs, len(classes))
+weights = torch.load(args['weights'], map_location='cpu')
+model.load_state_dict(weights)
+
 model.eval()
+model.to(device)
 
 correct_pred = {classname: 0 for classname in classes}
 total_pred = {classname: 0 for classname in classes}
@@ -89,16 +101,18 @@ batch_count = 0
 # again no gradients needed
 with torch.no_grad():
     for data in dataloaders["test"]:
-        batch_count += 1
+        #batch_count += 1
         images, labels = data
+        images = images.to(device)
         outputs = model(images)
         for output, label in zip(outputs,labels):
             # print(output)
             # print(label)
+            batch_count += 1
             top_k_accs = k_accuracy(outputs,labels,topk=(1,3,5))
-            top_1_acc += top_k_accs[0]
-            top_3_acc += top_k_accs[1]
-            top_5_acc += top_k_accs[2]
+            top_1_acc += top_k_accs[0][0]
+            top_3_acc += top_k_accs[1][0]
+            top_5_acc += top_k_accs[2][0]
         _, predictions = torch.max(outputs, 1)
         # collect the correct predictions for each class
         for label, prediction in zip(labels, predictions):
@@ -113,6 +127,7 @@ with torch.no_grad():
 
 total_correct = 0
 pred_tot = 0
+print(total_pred)
 # print accuracy for each class
 for classname, correct_count in correct_pred.items():
     total_correct += correct_count
