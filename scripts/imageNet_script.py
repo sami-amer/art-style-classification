@@ -128,8 +128,9 @@ print(f"Using classes {class_names}")
 model = models.resnext101_32x8d(pretrained=True)
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, len(class_names))
-weights = torch.load(args["weights"], map_location="cpu")
-model.load_state_dict(weights)
+if args["weights"] != "None":
+    weights = torch.load(args["weights"], map_location="cpu")
+    model.load_state_dict(weights)
 
 for param in model.parameters():
     param.requires_grad = False

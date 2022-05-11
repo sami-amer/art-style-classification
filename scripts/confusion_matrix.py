@@ -81,11 +81,11 @@ with torch.no_grad():
         y_pred.extend(predictions.cpu().numpy())
         y_true.extend(labels.cpu().numpy())
 
-cf_matrix = confusion_matrix(y_pred, y_true)
+cf_matrix = confusion_matrix(y_true, y_pred)
 print(cf_matrix)
-print(np.sum(cf_matrix, axis=0))
+print(np.sum(cf_matrix, axis=1))
 df_cm = pd.DataFrame(
-    (cf_matrix.T / np.sum(cf_matrix, axis=0)).T * 100,
+    (cf_matrix.T / np.sum(cf_matrix, axis=1)).T * 100,
     index=[i for i in classes],
     columns=[i for i in classes],
 )
