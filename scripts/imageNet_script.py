@@ -54,16 +54,16 @@ class FocalLoss(nn.Module):
             return loss.sum()
 
 
-args = {"dataset": sys.argv[1], "weights": sys.argv[2], "output_name": sys.argv[3]}
+args = {"dataset": sys.argv[1], "weights": sys.argv[2], "output_name": sys.argv[3],"batch_size":sys.argv[4]}
 print(
-    f"Arguments passed: dataset is {args['dataset']}, weights are {args['weights']}, output_name is : {args['output_name']}"
+    f"Arguments passed: dataset is {args['dataset']}, weights are {args['weights']}, output_name is: {args['output_name']}, batch_size is: {args['batch_size']}"
 )
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.backends.cudnn.benchmark = True
 
 
-batch_size = 256
+batch_size = int(args["batch_size"])
 num_workers = 64
 
 data_transforms = {
@@ -127,17 +127,20 @@ print(f"Using classes {class_names}")
 
 model = models.resnext101_32x8d(pretrained=True)
 num_ftrs = model.fc.in_features
-model.fc = nn.Linear(num_ftrs, len(class_names))
+model.fc = nn.Linear(num_ftrs,28)
+
 if args["weights"] != "None":
     weights = torch.load(args["weights"], map_location="cpu")
     model.load_state_dict(weights)
+num_ftrs = model.fc.in_features
+model.fc = nn.Linear(num_ftrs, len(class_names))
 
-for param in model.parameters():
-    param.requires_grad = False
+# for param in model.parameters():
+    # param.requires_grad = True #False
 
-for layer_num, param in enumerate(model.parameters()):
-    if layer_num > 200:
-        param.requires_grad = True
+# for layer_num, param in enumerate(model.parameters()):
+#     if layer_num > 200:
+#         param.requires_grad = True
 
 
 def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
@@ -254,7 +257,7 @@ model_ft = train_model(
     criterion,
     optimizer_convnext,
     exp_lr_scheduler_convnext,
-    num_epochs=40,
+    num_epochs=200,
 )
 
 torch.save(model_ft.module.state_dict(), args["output_name"] + "_weights")

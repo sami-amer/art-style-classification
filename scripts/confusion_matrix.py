@@ -21,9 +21,7 @@ from tqdm import tqdm
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 args = {"dataset": sys.argv[1], "weights": sys.argv[2], "output_name": sys.argv[3]}
-print(
-    f"Arguments passed: dataset is {args['dataset']}, weights are {args['weights']}, output_name is : {args['output_name']}"
-)
+print(f"Arguments passed: dataset is {args['dataset']}, weights are {args['weights']}, output_name is : {args['output_name']}")
 
 data_transforms = {
     "test": transforms.Compose(
